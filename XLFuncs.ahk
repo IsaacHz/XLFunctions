@@ -7,23 +7,26 @@ DetectHiddenWindows,On
 xlup 				:= -4162
 xldown 				:= -4121
 xlLeft 				:= -4159
-xlRight 			:= -4161
+xlRight 				:= -4161
 xlFormulas 			:= -4123
-xlValues 			:= -4163
-xlCenter 			:= -4108
-xlCalculationAutomatic 		:= -4105
-xlCalculationManual 		:= -4135
+xlValues 				:= -4163
+xlCenter 				:= -4108
+xlCalculationAutomatic 	:= -4105
+xlCalculationManual 	:= -4135
 xlAscending			:= 1
 xlDescending			:= 2
 xlSortOnValues			:= 0
-xlWhole 			:= 1
+xlWhole 				:= 1
 xlPart 				:= 2
 xlPrevious 			:= 2
 xlNext 				:= 1
-xlByrows 			:= 1
+xlByrows 				:= 1
 xlByColumns 			:= 2
 xlYes 				:= 1
 xlNo 				:= 2
+
+;a(XL_GetHPageBreaks("",""))
+;a(XL_GetVPageBreaks("",""))
 
 /*
 	sKeys := {}
@@ -562,6 +565,88 @@ XL_ObjToRange(Name,Sht,Range,obj)
 	}
 }
 
+/*
+;XL_GetHPageBreaks() Function
+;=========================================
+;Params:
+;		
+;
+;Name -Specify "" if you want to retrive handle to active excel workbook
+;	Otherwise, use the full name of the workbook you want a handle to - e.g. "Book1.xlsx - Excel"
+;
+;Sht -Specify "" if you want to use the active sheet, otherwise use the Sheet Name e.g. "Sheet1"
+;
+;Returns object with each key as row of horizontal page break location
+;;=========================================
+*/
+XL_GetHPageBreaks(Name,Sht)
+{
+	Obj := {}
+	
+	xla := XLCheck(Name)
+	if xla = False
+		return
+	sht := ((sht="") ?  xla.activesheet.name : sht)
+	
+	Try
+	{
+		Speedup(xla,0)
+		xla.application.activewindow.view := 2
+		pb := xla.sheets(sht).HPageBreaks
+		Loop % pb.Count
+			Obj[A_Index] := pb.Item(A_Index).Location.Row
+		xla.application.activewindow.view := 1
+		Speedup(xla,1)
+	}
+	Catch
+	{
+		Speedup(xla,1)
+		return "Err Getting Horizontal Page Breaks"
+	}
+	return Obj
+}
+
+/*
+;XL_GetVPageBreaks() Function
+;=========================================
+;Params:
+;		
+;
+;Name -Specify "" if you want to retrive handle to active excel workbook
+;	Otherwise, use the full name of the workbook you want a handle to - e.g. "Book1.xlsx - Excel"
+;
+;Sht -Specify "" if you want to use the active sheet, otherwise use the Sheet Name e.g. "Sheet1"
+;
+;rType - Default returns Column Letter, specify '1' to return column numbers instead
+;
+;Returns object with each key as Column/Letter of horizontal page break location
+;;=========================================
+*/
+XL_GetVPageBreaks(Name,Sht,rType:="")
+{
+	Obj := {}
+	
+	xla := XLCheck(Name)
+	if xla = False
+		return
+	sht := ((sht="") ?  xla.activesheet.name : sht)
+	
+	Try
+	{
+		Speedup(xla,0)
+		xla.application.activewindow.view := 2
+		pb := xla.sheets(sht).VPageBreaks
+		Loop % pb.Count
+			Obj[A_Index] := (rType) ? pb.Item(A_Index).Location.Column : ConvertToLetter(pb.Item(A_Index).Location.Column)
+		xla.application.activewindow.view := 1	
+		Speedup(xla,1)
+	}Catch{
+		Speedup(xla,1)
+		return "Err Getting Vertial Page Breaks"	
+	}
+	return obj
+}
+
 XL_ListWorkbooks()
 {
 	wbObj:=[]
@@ -583,8 +668,10 @@ XL_ListWorkbooks()
 ;==============================
 */
 XLCheck(Name) {
-	controlget,hwnd, hwnd,,Excel71, % (Name="") ? "ahk_class XLMAIN" : Name
+	If (ComObjType(Name,"Name") = "_Workbook")
+		return Name
 	
+	controlget,hwnd, hwnd,,Excel71, % (Name="") ? "ahk_class XLMAIN" : Name
 	WinGet, xl, ControlList, ahk_class XLMAIN
 	if RegExMatch(xl,"EXCEL61\nEXCEL71")
 		controlsend,EXCEL71,{Enter},%Name%
